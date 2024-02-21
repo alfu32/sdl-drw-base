@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "utility": "cpp",
+        "typeinfo": "c",
+        "sdl.h": "c",
+        "scene.h": "c",
+        "sdl_app_lib.h": "c"
+    }
+}
