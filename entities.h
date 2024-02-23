@@ -3,14 +3,18 @@
 #define __ENTITIES_H__
     #include <stdlib.h>
     #include <SDL2/SDL.h>
+
+
+    #define DEBUG_PRINT 0
+    #define PRINTF if(DEBUG_PRINT)printf
     // Define error_id if it's not already defined
     #ifndef error_id
-    typedef int error_id;
+        typedef int error_id;
 
-    #define ENT_ERR_OK -1
-    #define ENT_ALLOC_ERROR -2
-    #define ENT_NULL_INPUT -3
-    #define ENT_SHAPE_NOT_FOUND -4
+        #define ENT_ERR_OK -1
+        #define ENT_ALLOC_ERROR -2
+        #define ENT_NULL_INPUT -3
+        #define ENT_SHAPE_NOT_FOUND -4
     #endif
 
     typedef struct shape_s shape_t;
@@ -27,6 +31,7 @@
         physics_fn physics;
         drawing_fn draw;
         SDL_Point* contour;
+        char memory[256];
     } shape_t;
 
     typedef struct scene_s {
@@ -62,69 +67,73 @@
 
     // Implementations
     shape_t* shape__alloc() {
-        return (shape_t*)malloc(sizeof(shape_t));
+        shape_t* shp=(shape_t*)malloc(sizeof(shape_t));
+        // for(char k=0;k<256;k++){
+        //     shp->memory[k]=0;
+        // }
+        return shp;
     }
 
     error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw, const SDL_Point contour[]) {
         if (!shp || !physics || !draw || !contour){
-            printf("// Invalid arguments\n");
+            PRINTF("// Invalid arguments\n");
             return -1; // Invalid arguments
         }
         (*shp).anchor.x =  0;
         (*shp).anchor.y =  0;
-        printf("// Initialize anchor to NULL\n");
+        PRINTF("// Initialize anchor to NULL\n");
         shp->is_dead = 0; // Initialize is_dead to 0
-        printf("// Initialize is_dead to 0\n");
+        PRINTF("// Initialize is_dead to 0\n");
         shp->physics = physics;
         shp->draw = draw;
 
         // Calculate the size of the contour array
-        printf("// Calculate the size of the contour array\n");
+        PRINTF("// Calculate the size of the contour array\n");
         unsigned long contour_size = sizeof(shp->contour)/sizeof(SDL_Point);
-        printf("// The size of the contour array is %lu\n",contour_size);
+        PRINTF("// The size of the contour array is %lu\n",contour_size);
 
         // Allocate memory for contour
-        printf("// Allocate memory for contour\n");
+        PRINTF("// Allocate memory for contour\n");
         shp->contour = malloc((contour_size + 1) * sizeof(SDL_Point)); // +1 for the terminating (-1, -1)
         if (!shp->contour)
             return -1; // Memory allocation failed
 
         // Copy contour
-        printf("// Copy contour\n");
+        PRINTF("// Copy contour\n");
         for (size_t i = 0; i < contour_size; i++)
             shp->contour[i] = contour[i];
 
         // Mark end of contour with (-1, -1)
-        printf("// Mark end of contour with (-1, -1)\n");
+        PRINTF("// Mark end of contour with (-1, -1)\n");
         /// shp->contour[contour_size].x = -1;
         /// shp->contour[contour_size].y = -1;
-        printf("// Setup end of contour (-1, -1)\n");
+        PRINTF("// Setup end of contour (-1, -1)\n");
 
         return 0; // Success
     }
 
     void shape__draw(scene_t* scene,shape_t* shp, SDL_Renderer* renderer) {
-        printf("start drawing : shape_t* %lu %lu, scene_t* %lu %lu,SDL_Renderer* %lu %lu\n",(unsigned long)shp,sizeof(*shp),(unsigned long)scene,sizeof(*scene),(unsigned long)renderer,sizeof(renderer));
+        PRINTF("start drawing : shape_t* %lu %lu, scene_t* %lu %lu,SDL_Renderer* %lu %lu\n",(unsigned long)shp,sizeof(*shp),(unsigned long)scene,sizeof(*scene),(unsigned long)renderer,sizeof(renderer));
         
         if (shp == NULL || renderer == NULL)
             return; // Invalid shape or renderer, or shape is dead
-        //printf("// Valid shape and scene, and shape is not dead");
-        printf("executing draw fn pointer %lu\n",(unsigned long)(shp->draw));
+        //PRINTF("// Valid shape and scene, and shape is not dead");
+        PRINTF("executing draw fn pointer %lu\n",(unsigned long)(shp->draw));
         // return;
         (*shp).draw(scene,shp, renderer);
-        printf("// finished drawing");
+        PRINTF("// finished drawing");
     }
 
     void shape__physics(shape_t* shp, scene_t* scene, SDL_Renderer* renderer) {
         shape_t s=(*shp);
-        //printf("// starting physics for shape is_dead:%d\n",s.is_dead);
+        //PRINTF("// starting physics for shape is_dead:%d\n",s.is_dead);
         if (!shp || !scene || shp->is_dead)
             return;
         // Invalid shape or scene, or shape is dead
-        //printf("// Valid shape and scene, and shape is not dead");
+        //PRINTF("// Valid shape and scene, and shape is not dead");
         
         (*shp).physics(scene, shp,renderer);
-        //printf("// finished physics");
+        //PRINTF("// finished physics");
     }
 
     int shape__free(shape_t* shp) {
@@ -197,7 +206,7 @@ error_id scene__add_shape(scene_t* scene, shape_t* shp) {
     
     // Calculate the number of shapes in the scene
     unsigned long count = scene__shape_count(scene);
-    printf("scene count before adding shape : %lu\n",count);
+    PRINTF("scene count before adding shape : %lu\n",count);
     scene->shape_count=count;
 
     // Reallocate memory for shapes array to accommodate the new shape
@@ -214,7 +223,7 @@ error_id scene__add_shape(scene_t* scene, shape_t* shp) {
     
 
     count = scene__shape_count(scene);
-    printf("scene count after adding shape : %lu\n",count);
+    PRINTF("scene count after adding shape : %lu\n",count);
     scene->shape_count=count;
 
     return 0; // Success
@@ -243,15 +252,15 @@ error_id scene__remove_shape(scene_t* scene, shape_t* shp) {
 }
 
 void scene__draw(scene_t* scene, SDL_Renderer* renderer) {
-    printf("start drawing : scene_t* %lu %lu,SDL_Renderer* %lu %lu\n",(unsigned long)scene,sizeof(*scene),(unsigned long)renderer,sizeof(renderer));
+    PRINTF("start drawing : scene_t* %lu %lu,SDL_Renderer* %lu %lu\n",(unsigned long)scene,sizeof(*scene),(unsigned long)renderer,sizeof(renderer));
     if (!scene || !renderer)
         return; // Invalid scene or renderer
     
-    printf("counting shapes\n");
+    PRINTF("counting shapes\n");
     unsigned long count = scene__shape_count(scene);
-    printf("found %lu shapes\n",count);
+    PRINTF("found %lu shapes\n",count);
     for (unsigned long i = 0; i < count; i++){
-        printf("drawing shape %lu\n",i);
+        PRINTF("drawing shape %lu\n",i);
         shape__draw(scene, (*scene).shapes[i], renderer);
     }
 }
@@ -300,13 +309,13 @@ void scene__physics(scene_t* scene, SDL_Renderer* renderer) {
         //free(scene->mouse_position);
         
         // Free each shape
-        printf("// Free each shape\n");
+        PRINTF("// Free each shape\n");
         unsigned long count = scene->shape_count;
         for (unsigned long i = 0; i < count; i++)
             shape__free(scene->shapes[i]);
         
         // Free scene itself
-        printf("// Free scene itself\n");
+        PRINTF("// Free scene itself\n");
         free(scene);
 
         return ENT_ERR_OK; // Success

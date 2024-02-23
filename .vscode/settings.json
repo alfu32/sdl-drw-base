@@ -9,6 +9,10 @@
         "scene.h": "c",
         "sdl_app_lib.h": "c",
         "typesizes.h": "c",
-        "time64.h": "c"
+        "time64.h": "c",
+        "random": "c",
+        "cmath": "c",
+        "numbers": "c",
+        "vector": "c"
     }
 }

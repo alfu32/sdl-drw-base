@@ -3,8 +3,8 @@
 #include "entities.h"
 
 //behaviours
-#define ON_KEY(scene,key,expr) if(scene->keys_state[key]!=0){\
-        expr;\
+#define ON_KEY(scene,key, ...) if(scene->keys_state[key]!=0){\
+        __VA_ARGS__ \
     }
 
 
