@@ -3,7 +3,7 @@
 #include "entities.h"
 
 //behaviours
-#define ON_KEY(scene,key,expr) if(scene->keys_state[key]){\
+#define ON_KEY(scene,key,expr) if(scene->keys_state[key]!=0){\
         expr;\
     }
 

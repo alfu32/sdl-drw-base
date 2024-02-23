@@ -7,6 +7,8 @@
         "typeinfo": "c",
         "sdl.h": "c",
         "scene.h": "c",
-        "sdl_app_lib.h": "c"
+        "sdl_app_lib.h": "c",
+        "typesizes.h": "c",
+        "time64.h": "c"
     }
 }
