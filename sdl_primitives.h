@@ -47,6 +47,50 @@ for(int k=0;k<capacity*4+1;k++){\
 printf("}\n");\
 SDL_RenderDrawLines(RENDERER,points,capacity);\
 
+void sdl_draw_circle_filled_next(SDL_Renderer* renderer, int center_x, int center_y, int radius) {
+    double d = SDL_acos((radius - 0.5) / radius) * 180 / M_PI;
+    int quarter_capacity = (int)(90.0 / d) + 1; // Calculate points only for the first quarter
+    int total_capacity = 4 * quarter_capacity; // Total points for the full circle
+    SDL_Point points[total_capacity]; // Adjusted array size for all points
+
+    // Calculate points for the first quarter
+    for (int i = 0; i < quarter_capacity; i++) {
+        float angle = d * i * M_PI / 180;
+        float x = cos(angle) * radius;
+        float y = sin(angle) * radius;
+
+        // First quarter
+        points[i] = (SDL_Point){center_x + x, center_y - y};
+
+        // Second quarter (reflect over y-axis)
+        points[2*quarter_capacity - i - 1] = (SDL_Point){center_x - x, center_y - y};
+
+        // Third quarter (reflect over x-axis)
+        points[2*quarter_capacity + i] = (SDL_Point){center_x - x, center_y + y};
+
+        // Fourth quarter (reflect over y-axis again)
+        points[4*quarter_capacity - i - 1] = (SDL_Point){center_x + x, center_y + y};
+    }
+
+    // Draw the circle
+    SDL_RenderDrawLines(renderer, points, total_capacity);
+}
+
+void sdl_draw_circle_filled(SDL_Renderer* renderer, int center_x,int center_y,int radius){
+
+    double d = SDL_acos((radius-0.5)/radius)*180/M_PI;
+    int capacity=(int)360.0/d;
+    SDL_Point points[capacity+1];
+    for (int i = 0; i <= capacity; i += 1) {
+        float x = center_x + radius * cos(d*i * M_PI / 180);
+        float y = center_y + radius * sin(d*i * M_PI / 180);
+        SDL_Point p={x,y};
+        points[i]=p;
+    }
+    SDL_Point p={center_x+radius,0};
+    points[capacity]=p;
+    SDL_RenderDrawLines(renderer,points,capacity);
+}
 
 #define SDL_DRAW_CIRCLE_FILLED(RENDERER,X,Y,R) \
 /* Draw circle*/\

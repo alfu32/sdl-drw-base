@@ -77,7 +77,7 @@ void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
 void cursor_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
         // Draw circle
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
-        SDL_DRAW_CIRCLE_FILLED(renderer,scene->mouse_position.x,scene->mouse_position.y,25)
+        sdl_draw_circle_filled_next(renderer,scene->mouse_position.x,scene->mouse_position.y,25);
         //shape__restore_viewport(&vp,renderer);
 }
 
@@ -91,7 +91,7 @@ void projectile_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
         int circle_x = shape->anchor.x, circle_y = shape->anchor.y, radius = 5;
 
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
-        SDL_DRAW_CIRCLE_FILLED(renderer,shape->anchor.x,shape->anchor.y,5)
+        sdl_draw_circle_filled_next(renderer,shape->anchor.x,shape->anchor.y,5);
         //shape__restore_viewport(&vp,renderer);
 }
 
