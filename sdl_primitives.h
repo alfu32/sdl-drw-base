@@ -16,20 +16,52 @@ SDL_RenderDrawRect(renderer, &rect);\
 SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); /*blue*/\
 SDL_RenderFillRect(renderer, &rect);\
 
+#define SDL_DRAW_CIRCLE_FILLED_NEXT(RENDERER,X,Y,R) \
+/* Draw circle*/\
+double d = SDL_acos((R-0.5)/R)*180/M_PI;\
+int points_per_arc=((int)(90.0/d + 1));\
+if(points_per_arc<2){\
+    points_per_arc=2;\
+}\
+SDL_Point points[points_per_arc*4+1];\
+SDL_Point sh[points_per_arc*4+1];\
+for (int i = 0; i <= points_per_arc; i += 1) {\
+    float c=R*cos(d*i * M_PI / 180);\
+    float s=R*sin(d*i * M_PI / 180);\
+    points[0*(points_per_arc+1)+i].x=(int)(X + c);points[0*(points_per_arc+1)+i].y=(int)(Y + s);\
+    points[1*(points_per_arc+1)+i].x=(int)(X - s);points[1*(points_per_arc+1)+i].y=(int)(Y + c);\
+    points[2*(points_per_arc+1)+i].x=(int)(X - c);points[2*(points_per_arc+1)+i].y=(int)(Y - s);\
+    points[3*(points_per_arc+1)+i].x=(int)(X + s);points[3*(points_per_arc+1)+i].y=(int)(Y - c);\
+    sh[0*(points_per_arc)+i].x=(int)(+ c);sh[0*(points_per_arc)+i].y=(int)(+ s);\
+    sh[1*(points_per_arc)+i].x=(int)(- s);sh[1*(points_per_arc)+i].y=(int)(+ c);\
+    sh[2*(points_per_arc)+i].x=(int)(- c);sh[2*(points_per_arc)+i].y=(int)(- s);\
+    sh[3*(points_per_arc)+i].x=(int)(+ s);sh[3*(points_per_arc)+i].y=(int)(- c);\
+}\
+SDL_Point p={X+R,0};\
+points[capacity*4]=p;\
+sh[capacity*4].x=R;sh[capacity*4].y=0;\
+printf("CIRCLE(c%d,x%d,y%d,r%d){",capacity,X,Y,R);\
+for(int k=0;k<capacity*4+1;k++){\
+    printf("[%d]{%d,%d},",k,sh[k].x,sh[k].y);\
+};\
+printf("}\n");\
+SDL_RenderDrawLines(RENDERER,points,capacity);\
+
 
 #define SDL_DRAW_CIRCLE_FILLED(RENDERER,X,Y,R) \
 /* Draw circle*/\
-double d = SDL_acos((R-0.5)/R)*180/M_PI;\
-int capacity=(int)360.0/d;\
-SDL_Point points[capacity+1];\
-for (int i = 0; i <= capacity; i += 1) {\
-    float x = X + R * cos(d*i * M_PI / 180);\
-    float y = Y + R * sin(d*i * M_PI / 180);\
-    SDL_Point p={x,y};\
-    points[i]=p;\
+double arc_size = SDL_acos((R-0.5)/R)*1000;\
+int capacity=((int)(2000*M_PI/arc_size+1));\
+SDL_Point points[capacity];\
+for (int i = 0; i < capacity; i += 1) {\
+    float c=R*cos(arc_size*i/1000);\
+    float s=R*sin(arc_size*i/1000);\
+    points[i].x=X + c;\
+    points[i].y=Y + s;\
 }\
-SDL_Point p={X+R,0};\
-points[capacity]=p;\
+/*SDL_Point p={X+R,0};*/\
+points[capacity].x=X+R;\
+points[capacity].y=0;\
 SDL_RenderDrawLines(RENDERER,points,capacity);\
 
 #define SDL_DRAW_CIRCLE(X,Y,R) \
