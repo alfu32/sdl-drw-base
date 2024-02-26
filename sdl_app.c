@@ -17,14 +17,16 @@
 #define M_PI=3.14
 #endif
 
-struct projectile_data_s {
-    SDL_Point speed;
-} projectile_data_s;
-
-typedef struct projectile_data_s projectile_data_t;
-
+//// definition 
 int loop_running=1;
 SDL_Texture *ship_svg_texture;
+SDL_Window* window = NULL;
+SDL_Renderer* renderer = NULL;
+int canvas_width = 640;
+int canvas_height = 480;
+
+
+void handleResize(int new_width, int new_height);
 
 SDL_Rect shape__align_viewport(shape_t* shape,SDL_Renderer* renderer);
 int shape__restore_viewport(SDL_Rect* vp,SDL_Renderer* renderer);
@@ -34,6 +36,18 @@ void projectile_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
 shape_t* create_projectile(SDL_Point anchor,SDL_Point speed,SDL_Renderer *renderer,SDL_Rect *tex_size) ;
 void handleEvents(scene_t* scene) ;
 
+
+//// implementation
+
+
+void handleResize(int new_width, int new_height) {
+    // Update canvas size
+    canvas_width = new_width;
+    canvas_height = new_height;
+
+    // Update renderer viewport
+    SDL_RenderSetLogicalSize(renderer, canvas_width, canvas_height);
+}
 
 SDL_Rect shape__align_viewport(shape_t* shape,SDL_Renderer* renderer){
         SDL_Rect vp;
@@ -54,22 +68,25 @@ void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
     ON_KEY(scene,SDL_SCANCODE_W,(*shape).anchor.y-=1;)
     ON_KEY(scene,SDL_SCANCODE_S,(*shape).anchor.y+=1;)
     ON_KEY(scene,SDL_SCANCODE_SPACE,
-        SDL_Point speed={3,3};
-        SDL_Rect projectile_source_rect={90,0,20,20};
-        scene__add_shape(scene,create_projectile((*shape).anchor,speed,renderer,&projectile_source_rect));
+        if(scene->time_start - shape->memory.ship_props.previous_firing_time > shape->memory.ship_props.firing_frequency ){
+            SDL_Point speed={1,1};
+            SDL_Rect projectile_source_rect={90,0,20,20};
+            scene__add_shape(scene,create_projectile((*shape).anchor,speed,renderer,&projectile_source_rect));
+            (&(shape->memory.ship_props))->previous_firing_time = scene->time_start;
+        }
     );
     PRINTF("player %lu %d %d",(unsigned long)shape,shape->anchor.x,shape->anchor.y);
 }
 
 void cursor_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
-    shape->anchor.x=scene->mouse_position.x;
-    shape->anchor.y=scene->mouse_position.y;
+    shape->anchor.x=scene->mouse_position.x-shape->sprite_source.w;
+    shape->anchor.y=scene->mouse_position.y-shape->sprite_source.h;
     PRINTF("cursor %lu %d %d",(unsigned long)shape,shape->anchor.x,shape->anchor.y);
 }
 
 
 void projectile_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
-    projectile_data_t* data=(projectile_data_t*)shape->memory;
+    projectile_data_t *data=&(shape->memory.projectile_props);
     shape->anchor.x+=data->speed.x;
     shape->anchor.y+=data->speed.y;
     int maxw,maxh;
@@ -99,8 +116,8 @@ shape_t* create_projectile(SDL_Point anchor,SDL_Point speed,SDL_Renderer *render
 
     // TODO reuse texture
     shape__init_sprite_with_texture(projectile,renderer,&projectile_physics,ship_svg_texture,tex_size);
-    projectile_data_t* data=(projectile_data_t*)projectile->memory;
-    data->speed.x=speed.x;data->speed.y=speed.y;
+    projectile->memory.projectile_props.speed.x=speed.x;
+    projectile->memory.projectile_props.speed.y=speed.y;
     projectile->anchor.x=anchor.x;
     projectile->anchor.y=anchor.y;
     return projectile;
@@ -127,6 +144,8 @@ void handleEvents(scene_t* scene) {
                 PRINTF("\nquitting\n");
             loop_running=0;
             break;
+        } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
+            handleResize(event.window.data1, event.window.data2);
         }
     }
 }
@@ -144,8 +163,8 @@ int main(int argc, const char** argv) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
 
-    SDL_Window *window = SDL_CreateWindow("SDL Example", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN);
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    window = SDL_CreateWindow("Resizable Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, canvas_width, canvas_height, SDL_WINDOW_RESIZABLE);
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     scene_t *scene = scene__alloc();
     ship_svg_texture = shape__static__init_texture(renderer,"sprites.svg");
@@ -161,6 +180,8 @@ int main(int argc, const char** argv) {
         loop_running=0;
     }
     printf("initialized sprite\n");
+    player->memory.ship_props.previous_firing_time=SDL_GetTicks64();
+    player->memory.ship_props.firing_frequency=10;
     scene__add_shape(scene,player);
     printf("added player to scene\n");
 
@@ -176,7 +197,7 @@ int main(int argc, const char** argv) {
     
 
     SDL_Point origin= {20,30};
-    SDL_Point speed={3,3};
+    SDL_Point speed={1,1};
 
     SDL_Rect projectile_source_rect={90,0,20,20};
     shape_t* projectile = create_projectile(origin,speed,renderer,&projectile_source_rect);
@@ -188,6 +209,10 @@ int main(int argc, const char** argv) {
     while (loop_running) {
         handleEvents(scene);
         if(loop_running){
+
+            int maxw,maxh;
+            SDL_GetRendererOutputSize(renderer,&maxw,&maxh);
+
             // Set drawing color
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // white
 
@@ -204,13 +229,15 @@ int main(int argc, const char** argv) {
             scene->time_cleanup = SDL_GetTicks64();
 
             SDL_Color color={200,100,0,255};
-            SDL_DRAW_TEXT(1,10,10,font,color,"entities %05lu, frame %03lu ms",
+            SDL_DRAW_TEXT(1,10,10,font,color,"entities %05lu, frame %03lu ms, w:%d, h:%d",
                 scene->shape_count,
-                (scene->time_cleanup-scene->time_start)*20
+                (scene->time_cleanup-scene->time_start),
+                maxw,maxh
             )
-            SDL_DRAW_TEXT(2,10,440,font,color,"physics: %03lums, draw: %03lu ms",
-                (scene->time_physics-scene->time_start)*20,
-                (scene->time_draw-scene->time_physics)*20
+
+            SDL_DRAW_TEXT(2,10,maxh-30,font,color,"physics: %03lums, draw: %03lu ms",
+                (scene->time_physics-scene->time_start),
+                (scene->time_draw-scene->time_physics)
             )
 
             // Update the screen

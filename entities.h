@@ -21,6 +21,37 @@
     typedef struct shape_s shape_t;
     typedef struct scene_s scene_t;
 
+
+    typedef struct projectile_data_s projectile_data_t;
+    typedef struct ship_data_s ship_data_t;
+
+
+    typedef union shape_data_u shape_date_u;
+
+
+
+    typedef struct projectile_data_s {
+        /*owned    */  SDL_Point speed;
+        /*owned    */  int mass;
+        /*borrowed */  SDL_Point previous_pos;
+    } projectile_data_t;
+
+    typedef struct ship_data_s {
+        /*owned    */  SDL_Point speed;
+        /*owned    */  int mass;
+        /*borrowed */  SDL_Point previous_pos;
+        /*borrowed */  long int previous_firing_time;
+        /*borrowed */  long int firing_frequency;
+    } ship_data_t;
+
+    typedef union shape_data_u{
+        projectile_data_t projectile_props;
+        ship_data_t ship_props;
+        char char_array[256];
+        unsigned int int_array[64];
+        unsigned long long_array[32];
+    } shape_data_t;
+
     // Function pointer types
     typedef void (*physics_fn)(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
     typedef void (*drawing_fn)(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
@@ -34,7 +65,7 @@
         /*borowed*/ physics_fn physics;
         /*borowed*/ drawing_fn draw;
     //  /*owned  */ SDL_Point* contour;
-        /*owned  */ char memory[256];
+        /*owned  */ shape_data_t memory;
     } shape_t;
 
     typedef struct scene_s {
