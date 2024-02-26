@@ -3,7 +3,7 @@
 
 
 #ifndef M_PI
-#define M_PI=3.14
+#define M_PI 3.14
 #endif
 #define SDL_DRAW_rectangle \
 // Draw rectangle\
@@ -63,6 +63,7 @@ for (int i = 0; i < capacity; i += 1) {\
 points[capacity].x=X+R;\
 points[capacity].y=0;\
 SDL_RenderDrawLines(RENDERER,points,capacity);\
+
 
 #define SDL_DRAW_CIRCLE(X,Y,R) \
 /* Draw circle*/\

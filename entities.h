@@ -3,10 +3,11 @@
 #define __ENTITIES_H__
     #include <stdlib.h>
     #include <SDL2/SDL.h>
+    #include <SDL2/SDL_image.h>
 
 
     #define DEBUG_PRINT 0
-    #define PRINTF if(DEBUG_PRINT)printf
+    #define PRINTF if(DEBUG_PRINT)PRINTF
     // Define error_id if it's not already defined
     #ifndef error_id
         typedef int error_id;
@@ -28,9 +29,11 @@
     typedef struct shape_s {
         SDL_Point anchor;
         int is_dead;
+        SDL_Texture* tex;
+        SDL_Rect sprite_source;
         physics_fn physics;
         drawing_fn draw;
-        SDL_Point* contour;
+        // SDL_Point* contour;
         char memory[256];
     } shape_t;
 
@@ -46,14 +49,21 @@
         long int time_cleanup;
     } scene_t;
 
+
+
     // Function prototypes
     shape_t* shape__alloc();
-    error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw, const SDL_Point contour[]);
+    error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw);
+    error_id shape__init_sprite(shape_t* shp, SDL_Renderer* rend,physics_fn physics, const char * filename, SDL_Rect *sprite_source);
     void shape__draw(scene_t* scene,shape_t* shp, SDL_Renderer* renderer);
     void shape__physics(shape_t* shp, scene_t* scene, SDL_Renderer* renderer);
     int shape__free(shape_t* shp);
     SDL_Rect shape__get_bounding_box(shape_t* shp);
     int shape__collides_with(shape_t* a, shape_t* b);
+
+    void shape__static_draw_sprite(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
+
+
 
     scene_t* scene__alloc();
     unsigned long scene__shape_count(scene_t* scene);
@@ -74,8 +84,10 @@
         return shp;
     }
 
-    error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw, const SDL_Point contour[]) {
-        if (!shp || !physics || !draw || !contour){
+
+
+    error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw) {
+        if (!shp || !physics || !draw ){
             PRINTF("// Invalid arguments\n");
             return -1; // Invalid arguments
         }
@@ -87,21 +99,21 @@
         shp->physics = physics;
         shp->draw = draw;
 
-        // Calculate the size of the contour array
-        PRINTF("// Calculate the size of the contour array\n");
-        unsigned long contour_size = sizeof(shp->contour)/sizeof(SDL_Point);
-        PRINTF("// The size of the contour array is %lu\n",contour_size);
+        /// // Calculate the size of the contour array
+        /// PRINTF("// Calculate the size of the contour array\n");
+        /// unsigned long contour_size = sizeof(shp->contour)/sizeof(SDL_Point);
+        /// PRINTF("// The size of the contour array is %lu\n",contour_size);
 
-        // Allocate memory for contour
-        PRINTF("// Allocate memory for contour\n");
-        shp->contour = malloc((contour_size + 1) * sizeof(SDL_Point)); // +1 for the terminating (-1, -1)
-        if (!shp->contour)
-            return -1; // Memory allocation failed
+        /// // Allocate memory for contour
+        /// PRINTF("// Allocate memory for contour\n");
+        /// shp->contour = malloc((contour_size + 1) * sizeof(SDL_Point)); // +1 for the terminating (-1, -1)
+        /// if (!shp->contour)
+        ///     return -1; // Memory allocation failed
 
-        // Copy contour
-        PRINTF("// Copy contour\n");
-        for (size_t i = 0; i < contour_size; i++)
-            shp->contour[i] = contour[i];
+        /// // Copy contour
+        /// PRINTF("// Copy contour\n");
+        /// for (size_t i = 0; i < contour_size; i++)
+        ///     shp->contour[i] = contour[i];
 
         // Mark end of contour with (-1, -1)
         PRINTF("// Mark end of contour with (-1, -1)\n");
@@ -110,6 +122,46 @@
         PRINTF("// Setup end of contour (-1, -1)\n");
 
         return 0; // Success
+    }
+
+    error_id shape__init_sprite(shape_t* shp, SDL_Renderer* rend,physics_fn physics, const char * filename, SDL_Rect *sprite_source) {
+        if (!shp || !physics ){
+            PRINTF("// Invalid arguments\n");
+            return -1; // Invalid arguments
+        }
+        (*shp).anchor.x =  0;
+        (*shp).anchor.y =  0;
+        PRINTF("// Initialize anchor to NULL\n");
+        shp->is_dead = 0; // Initialize is_dead to 0
+        PRINTF("// Initialize is_dead to 0\n");
+        // load the image into memory using SDL_image library function
+        // SDL_Surface* surface = IMG_Load("resources/hello.png");
+        shp->draw=&shape__static_draw_sprite;
+        shp->physics=physics;
+
+        SDL_Surface* surface = IMG_Load(filename);
+        if (!surface)
+        {
+            return -1;
+        }
+
+        // load the image data into the graphics hardware's memory
+        SDL_Texture *tex = SDL_CreateTextureFromSurface(rend, surface);
+        SDL_FreeSurface(surface);
+        if (!tex)
+        {
+            PRINTF("error initializing the texture %s",filename);
+            return -2;
+        }
+
+        // struct to hold the position and size of the sprite
+        shp->sprite_source.x=(*sprite_source).x;
+        shp->sprite_source.y=(*sprite_source).y;
+        shp->sprite_source.w=(*sprite_source).w;
+        shp->sprite_source.h=(*sprite_source).h;
+        shp->tex=tex;
+        PRINTF("initialized sprite entity with texture %lu at %d %d measuring %d %d\n\n",shp->tex,shp->sprite_source.x,shp->sprite_source.y,shp->sprite_source.w,shp->sprite_source.h);
+        return 0;
     }
 
     void shape__draw(scene_t* scene,shape_t* shp, SDL_Renderer* renderer) {
@@ -143,6 +195,14 @@
         free(shp);
 
         return ENT_ERR_OK; // Success
+    }
+
+    void shape__static_draw_sprite(scene_t* scene, shape_t* shape, SDL_Renderer* renderer){
+        // draw the image to the window
+        SDL_Rect source={shape->sprite_source.x,shape->sprite_source.y,shape->sprite_source.w,shape->sprite_source.h};
+        SDL_Rect dest={shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h};
+        PRINTF("\rdrawing sprite %x at %d %d %d %d",shape->tex,shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h);
+        SDL_RenderCopy(renderer, (*shape).tex, &source, &dest);
     }
 
     SDL_Rect shape__get_bounding_box(shape_t* shp) {

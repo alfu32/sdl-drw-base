@@ -13,6 +13,9 @@
         "random": "c",
         "cmath": "c",
         "numbers": "c",
-        "vector": "c"
+        "vector": "c",
+        "deque": "c",
+        "string": "c",
+        "sdl_ttf.h": "c"
     }
 }
