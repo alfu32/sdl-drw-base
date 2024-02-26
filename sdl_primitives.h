@@ -6,7 +6,7 @@
 #define M_PI 3.14
 #endif
 #define SDL_DRAW_rectangle \
-// Draw rectangle\
+/*Draw rectangle*/\
 SDL_Rect rect = {100, 100, 200, 150};\
 SDL_RenderDrawRect(renderer, &rect);\
 

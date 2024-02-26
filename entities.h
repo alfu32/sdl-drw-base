@@ -7,7 +7,7 @@
 
 
     #define DEBUG_PRINT 0
-    #define PRINTF if(DEBUG_PRINT)PRINTF
+    #define PRINTF if(DEBUG_PRINT)printf
     // Define error_id if it's not already defined
     #ifndef error_id
         typedef int error_id;
@@ -27,26 +27,26 @@
 
     // Structure definitions
     typedef struct shape_s {
-        SDL_Point anchor;
-        int is_dead;
-        SDL_Texture* tex;
-        SDL_Rect sprite_source;
-        physics_fn physics;
-        drawing_fn draw;
-        // SDL_Point* contour;
-        char memory[256];
+        /*owned  */ SDL_Point anchor;
+        /*owned  */ int is_dead;
+        /*borowed*/ SDL_Texture* tex;
+        /*owned  */ SDL_Rect sprite_source;
+        /*borowed*/ physics_fn physics;
+        /*borowed*/ drawing_fn draw;
+    //  /*owned  */ SDL_Point* contour;
+        /*owned  */ char memory[256];
     } shape_t;
 
     typedef struct scene_s {
-        shape_t** shapes; // null terminated array
-        unsigned long shape_count;
-        char keys_state[SDL_NUM_SCANCODES];
-        SDL_Point mouse_position; // never touch the reference, just update fields
-        long int time_start;
-        long int time_physics;
-        long int time_draw;
-        long int time_collisions;
-        long int time_cleanup;
+        /*owned  */ shape_t** shapes; // null terminated array
+        /*owned  */ unsigned long shape_count;
+        /*owned  */ char keys_state[SDL_NUM_SCANCODES];
+        /*owned  */ SDL_Point mouse_position; // never touch the reference, just update fields
+        /*owned  */ long int time_start;
+        /*owned  */ long int time_physics;
+        /*owned  */ long int time_draw;
+        /*owned  */ long int time_collisions;
+        /*owned  */ long int time_cleanup;
     } scene_t;
 
 
@@ -54,6 +54,8 @@
     // Function prototypes
     shape_t* shape__alloc();
     error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw);
+    SDL_Texture * shape__static__init_texture(SDL_Renderer* rend,const char * filename);
+    error_id shape__init_sprite_with_texture(shape_t* shp, SDL_Renderer* rend,physics_fn physics, SDL_Texture * tex, SDL_Rect *sprite_source);
     error_id shape__init_sprite(shape_t* shp, SDL_Renderer* rend,physics_fn physics, const char * filename, SDL_Rect *sprite_source);
     void shape__draw(scene_t* scene,shape_t* shp, SDL_Renderer* renderer);
     void shape__physics(shape_t* shp, scene_t* scene, SDL_Renderer* renderer);
@@ -61,7 +63,7 @@
     SDL_Rect shape__get_bounding_box(shape_t* shp);
     int shape__collides_with(shape_t* a, shape_t* b);
 
-    void shape__static_draw_sprite(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
+    void shape__static__draw_sprite(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
 
 
 
@@ -124,6 +126,50 @@
         return 0; // Success
     }
 
+    SDL_Texture * shape__static__init_texture(SDL_Renderer* rend,const char * filename) {
+
+        SDL_Surface* surface = IMG_Load(filename);
+        if (!surface)
+        {
+            return NULL;
+        }
+
+        // load the image data into the graphics hardware's memory
+        SDL_Texture *tex = SDL_CreateTextureFromSurface(rend, surface);
+        SDL_FreeSurface(surface);
+        if (!tex)
+        {
+            PRINTF("error initializing the texture %s",filename);
+            return NULL;
+        }
+
+        return tex;
+    }
+
+    error_id shape__init_sprite_with_texture(shape_t* shp, SDL_Renderer* rend,physics_fn physics, SDL_Texture * tex, SDL_Rect *sprite_source) {
+        if (!shp || !physics ){
+            PRINTF("// Invalid arguments\n");
+            return -1; // Invalid arguments
+        }
+        (*shp).anchor.x =  0;
+        (*shp).anchor.y =  0;
+        PRINTF("// Initialize anchor to NULL\n");
+        shp->is_dead = 0; // Initialize is_dead to 0
+        PRINTF("// Initialize is_dead to 0\n");
+        // load the image into memory using SDL_image library function
+        // SDL_Surface* surface = IMG_Load("resources/hello.png");
+        shp->draw=&shape__static__draw_sprite;
+        shp->physics=physics;
+        // struct to hold the position and size of the sprite
+        shp->sprite_source.x=(*sprite_source).x;
+        shp->sprite_source.y=(*sprite_source).y;
+        shp->sprite_source.w=(*sprite_source).w;
+        shp->sprite_source.h=(*sprite_source).h;
+        shp->tex=tex;
+        PRINTF("initialized sprite entity with texture %lu at %d %d measuring %d %d\n\n",(unsigned long)shp->tex,shp->sprite_source.x,shp->sprite_source.y,shp->sprite_source.w,shp->sprite_source.h);
+        return 0;
+    }
+
     error_id shape__init_sprite(shape_t* shp, SDL_Renderer* rend,physics_fn physics, const char * filename, SDL_Rect *sprite_source) {
         if (!shp || !physics ){
             PRINTF("// Invalid arguments\n");
@@ -136,7 +182,7 @@
         PRINTF("// Initialize is_dead to 0\n");
         // load the image into memory using SDL_image library function
         // SDL_Surface* surface = IMG_Load("resources/hello.png");
-        shp->draw=&shape__static_draw_sprite;
+        shp->draw=&shape__static__draw_sprite;
         shp->physics=physics;
 
         SDL_Surface* surface = IMG_Load(filename);
@@ -160,7 +206,7 @@
         shp->sprite_source.w=(*sprite_source).w;
         shp->sprite_source.h=(*sprite_source).h;
         shp->tex=tex;
-        PRINTF("initialized sprite entity with texture %lu at %d %d measuring %d %d\n\n",shp->tex,shp->sprite_source.x,shp->sprite_source.y,shp->sprite_source.w,shp->sprite_source.h);
+        PRINTF("initialized sprite entity with texture %lu at %d %d measuring %d %d\n\n",(unsigned long)shp->tex,shp->sprite_source.x,shp->sprite_source.y,shp->sprite_source.w,shp->sprite_source.h);
         return 0;
     }
 
@@ -177,7 +223,6 @@
     }
 
     void shape__physics(shape_t* shp, scene_t* scene, SDL_Renderer* renderer) {
-        shape_t s=(*shp);
         //PRINTF("// starting physics for shape is_dead:%d\n",s.is_dead);
         if (!shp || !scene || shp->is_dead)
             return;
@@ -197,11 +242,11 @@
         return ENT_ERR_OK; // Success
     }
 
-    void shape__static_draw_sprite(scene_t* scene, shape_t* shape, SDL_Renderer* renderer){
+    void shape__static__draw_sprite(scene_t* scene, shape_t* shape, SDL_Renderer* renderer){
         // draw the image to the window
         SDL_Rect source={shape->sprite_source.x,shape->sprite_source.y,shape->sprite_source.w,shape->sprite_source.h};
         SDL_Rect dest={shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h};
-        PRINTF("\rdrawing sprite %x at %d %d %d %d",shape->tex,shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h);
+        PRINTF("\rdrawing sprite %lu at %d %d %d %d",(unsigned long)shape->tex,shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h);
         SDL_RenderCopy(renderer, (*shape).tex, &source, &dest);
     }
 

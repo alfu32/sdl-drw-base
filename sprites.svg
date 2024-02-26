@@ -23,9 +23,9 @@
      inkscape:pagecheckerboard="0"
      inkscape:document-units="px"
      showgrid="true"
-     inkscape:zoom="2.8284271"
-     inkscape:cx="22.627417"
-     inkscape:cy="16.086679"
+     inkscape:zoom="8"
+     inkscape:cx="75.125"
+     inkscape:cy="64.9375"
      inkscape:window-width="1876"
      inkscape:window-height="1024"
      inkscape:window-x="0"
@@ -33,13 +33,15 @@
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1"
      width="128px"
-     inkscape:snap-grids="false">
+     inkscape:snap-grids="true"
+     showguides="true"
+     inkscape:guide-bbox="true">
     <inkscape:grid
        type="xygrid"
        id="grid62"
-       spacingx="10"
-       spacingy="10"
-       empspacing="10"
+       spacingx="2"
+       spacingy="2"
+       empspacing="5"
        color="#aa3fff"
        opacity="0.40392157"
        empcolor="#3f3fff"
@@ -52,23 +54,23 @@
      inkscape:groupmode="layer"
      id="layer1">
     <circle
-       style="fill:#ff0000;fill-rule:evenodd"
+       style="fill:#ff0000;fill-opacity:1;fill-rule:evenodd;stroke:none;stroke-opacity:1"
        id="path1183"
-       cx="78"
-       cy="2"
-       r="2" />
+       cx="72.5"
+       cy="2.5"
+       r="2.5" />
     <circle
        style="fill:#ff0000;fill-rule:evenodd"
        id="path1185"
-       cx="80"
-       cy="12"
-       r="4" />
+       cx="75"
+       cy="15"
+       r="5" />
     <circle
-       style="fill:#ff0000;fill-rule:evenodd"
+       style="fill:none;fill-opacity:0.345825;fill-rule:evenodd;stroke:#ee0000;stroke-opacity:0.460946"
        id="path1187"
-       cx="82"
-       cy="26"
-       r="6" />
+       cx="100"
+       cy="10"
+       r="9.5" />
     <g
        id="g12301">
       <path
@@ -126,5 +128,48 @@
          d="M 24,32 H 8 l 4,2.115116 z"
          id="path10107" />
     </g>
+    <rect
+       style="fill:#ffffff;stroke:#0005ff;stroke-width:1;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;fill-opacity:0.25970459"
+       id="rect898"
+       width="8"
+       height="8"
+       x="76"
+       y="46"
+       ry="2" />
+    <path
+       style="fill:none;stroke:#2bb700;stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 80,59.5 v -19"
+       id="path872"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#ff0202;stroke-width:1px;stroke-linecap:round;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 70.5,50 h 19"
+       id="path874"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#ffffff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 79.5,50 h 1"
+       id="path1704"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#ff0202;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 75.5,50 h 1"
+       id="path2211"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#0005ff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 83.5,50 h 1"
+       id="path2213"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#0005ff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 79.5,46 h 1"
+       id="path2485"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#2bb700;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 79.5,54 h 1"
+       id="path2487"
+       sodipodi:nodetypes="cc" />
   </g>
 </svg>

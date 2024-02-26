@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_image.h>
 #include <time.h>
 #include <unistd.h>
@@ -25,14 +24,12 @@ struct projectile_data_s {
 typedef struct projectile_data_s projectile_data_t;
 
 int loop_running=1;
+SDL_Texture *ship_svg_texture;
 
 SDL_Rect shape__align_viewport(shape_t* shape,SDL_Renderer* renderer);
 int shape__restore_viewport(SDL_Rect* vp,SDL_Renderer* renderer);
-void player_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
 void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
-void cursor_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
 void cursor_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
-void projectile_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
 void projectile_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer);
 shape_t* create_projectile(SDL_Point anchor,SDL_Point speed,SDL_Renderer *renderer,SDL_Rect *tex_size) ;
 void handleEvents(scene_t* scene) ;
@@ -51,19 +48,6 @@ int shape__restore_viewport(SDL_Rect* vp,SDL_Renderer* renderer){
         return 0;
 }
 
-void player_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
-
-        int circle_x = shape->anchor.x, circle_y = shape->anchor.y, radius = 50;
-
-        // Draw rectangle
-        SDL_Rect rect = {circle_x+10, circle_y+10, 50, 50};
-        SDL_RenderDrawRect(renderer, &rect);
-
-        // Draw filled rectangle
-        SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // blue
-        SDL_RenderFillRect(renderer, &rect);
-}
-
 void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
     ON_KEY(scene,SDL_SCANCODE_D,(*shape).anchor.x+=1;)
     ON_KEY(scene,SDL_SCANCODE_A,(*shape).anchor.x-=1;)
@@ -71,17 +55,10 @@ void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
     ON_KEY(scene,SDL_SCANCODE_S,(*shape).anchor.y+=1;)
     ON_KEY(scene,SDL_SCANCODE_SPACE,
         SDL_Point speed={3,3};
-        SDL_Rect projectile_source_rect={76,20,10,10};
+        SDL_Rect projectile_source_rect={90,0,20,20};
         scene__add_shape(scene,create_projectile((*shape).anchor,speed,renderer,&projectile_source_rect));
     );
     PRINTF("player %lu %d %d",(unsigned long)shape,shape->anchor.x,shape->anchor.y);
-}
-
-void cursor_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
-        // Draw circle
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
-        sdl_draw_circle_filled_next(renderer,scene->mouse_position.x,scene->mouse_position.y,25);
-        //shape__restore_viewport(&vp,renderer);
 }
 
 void cursor_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
@@ -90,45 +67,38 @@ void cursor_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
     PRINTF("cursor %lu %d %d",(unsigned long)shape,shape->anchor.x,shape->anchor.y);
 }
 
-void projectile_draw(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
-        int circle_x = shape->anchor.x, circle_y = shape->anchor.y, radius = 5;
-
-        SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255); // green
-        sdl_draw_circle_filled_next(renderer,shape->anchor.x,shape->anchor.y,5);
-        //shape__restore_viewport(&vp,renderer);
-}
-
 
 void projectile_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
     projectile_data_t* data=(projectile_data_t*)shape->memory;
     shape->anchor.x+=data->speed.x;
     shape->anchor.y+=data->speed.y;
+    int maxw,maxh;
+    SDL_GetRendererOutputSize(renderer,&maxw,&maxh);
+    SDL_Rect bb=shape__get_bounding_box(shape);
 
-    if(shape->anchor.x>640){
-        shape->anchor.x=640;
+    if(shape->anchor.x>(maxw-bb.w)){
+        shape->anchor.x=(maxw-bb.w);
         data->speed.x*=-1;
     }
     if(shape->anchor.x<0){
         shape->anchor.x=0;
         data->speed.x*=-1;
     }
-    if(shape->anchor.y>480){
-        shape->anchor.y=480;
+    if(shape->anchor.y>(maxh-bb.y-50)){
+        shape->anchor.y=maxh-bb.y-50;
         data->speed.y*=-1;
     }
-    if(shape->anchor.y<0){
-        shape->anchor.y=0;
+    if(shape->anchor.y<50){
+        shape->anchor.y=50;
         data->speed.y*=-1;
     }
     PRINTF("projectile %lu %d %d",(unsigned long)shape,shape->anchor.x,shape->anchor.y);
 }
 shape_t* create_projectile(SDL_Point anchor,SDL_Point speed,SDL_Renderer *renderer,SDL_Rect *tex_size) {
     shape_t* projectile = shape__alloc();
-    // const SDL_Point contour_player2[] = {{5,0},{4,2},{3,3},{1,4},{-1,4},{-3,3},{-4,2},{-4,0},{-4,-2},{-3,-3},{-1,-4},{1,-4},{3,-3},{4,-2}};
-    // shape__init(projectile,&projectile_physics,&projectile_draw);
 
     // TODO reuse texture
-    shape__init_sprite(projectile,renderer,&projectile_physics,"ship.svg",tex_size);
+    shape__init_sprite_with_texture(projectile,renderer,&projectile_physics,ship_svg_texture,tex_size);
     projectile_data_t* data=(projectile_data_t*)projectile->memory;
     data->speed.x=speed.x;data->speed.y=speed.y;
     projectile->anchor.x=anchor.x;
@@ -178,15 +148,14 @@ int main(int argc, const char** argv) {
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     scene_t *scene = scene__alloc();
+    ship_svg_texture = shape__static__init_texture(renderer,"sprites.svg");
 
     shape_t* player = shape__alloc();
     printf("allocated player\n");
-
-    // const SDL_Point contour_player[] = {{50, 50}, {100, 200}, {200, 150}, {250, 300}, {400, 250}};
-    // shape__init(player,&player_physics,&player_draw);
+    
     SDL_Rect player_source_rect={0,0,70,60};
     printf("initialized texture source rectangle\n");
-    error_id err_init_player = shape__init_sprite(player,renderer,&player_physics,"ship.svg",&player_source_rect);
+    error_id err_init_player = shape__init_sprite_with_texture(player,renderer,&player_physics,ship_svg_texture,&player_source_rect);
     if(err_init_player){
         printf("texture initialisation error %d sprite\n",err_init_player);
         loop_running=0;
@@ -196,10 +165,9 @@ int main(int argc, const char** argv) {
     printf("added player to scene\n");
 
     shape_t* cursor = shape__alloc();
-    SDL_Rect cursor_source_rect={76,20,10,10};
-    // const SDL_Point contour_cursor[] = {{50, 50}, {100, 200}, {200, 150}, {250, 300}, {400, 250}};
-    // shape__init(cursor,&cursor_physics,&cursor_draw);
-    error_id err_init_cursor = shape__init_sprite(cursor,renderer,&cursor_physics,"ship.svg",&cursor_source_rect);
+    SDL_Rect cursor_source_rect={70,40,20,20};
+    
+    error_id err_init_cursor = shape__init_sprite_with_texture(cursor,renderer,&cursor_physics,ship_svg_texture,&cursor_source_rect);
     if(err_init_cursor){
         printf("texture initialisation error %d sprite\n",err_init_player);
         loop_running=0;
@@ -210,7 +178,7 @@ int main(int argc, const char** argv) {
     SDL_Point origin= {20,30};
     SDL_Point speed={3,3};
 
-    SDL_Rect projectile_source_rect={76,20,10,10};
+    SDL_Rect projectile_source_rect={90,0,20,20};
     shape_t* projectile = create_projectile(origin,speed,renderer,&projectile_source_rect);
     scene__add_shape(scene,projectile);
 
@@ -256,7 +224,7 @@ int main(int argc, const char** argv) {
             SDL_FreeSurface(text_surface_1);
             SDL_FreeSurface(text_surface_2);
         }
-        usleep(1*1000);
+        // usleep(1*1000);
     }
 
     // Clean up
@@ -264,7 +232,7 @@ int main(int argc, const char** argv) {
     /// SDL_FreeSurface(text_surface);
     /// TTF_CloseFont(font);
     TTF_Quit();
-    SDL_DestroyTexture(player->tex);
+    SDL_DestroyTexture(ship_svg_texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
