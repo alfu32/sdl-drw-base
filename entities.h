@@ -88,7 +88,7 @@
 
     error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw) {
         if (!shp || !physics || !draw ){
-            PRINTF("// Invalid arguments\n");
+            PRINTF("// Invalid arguments %d\n",0);
             return -1; // Invalid arguments
         }
         (*shp).anchor.x =  0;
