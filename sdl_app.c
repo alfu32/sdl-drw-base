@@ -84,7 +84,10 @@ void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
         if(scene->time_start - shape->memory.ship_props.previous_firing_time > shape->memory.ship_props.firing_frequency ){
             SDL_Point speed={(*shape).memory.projectile_props.speed.x*2,(*shape).memory.projectile_props.speed.y*2};
             SDL_Rect projectile_source_rect={90,0,20,20};
-            scene__add_shape(scene,create_projectile((*shape).anchor,speed,renderer,&projectile_source_rect));
+            SDL_Point upper={(*shape).anchor.x,(*shape).anchor.y-20};
+            SDL_Point lower={(*shape).anchor.x,(*shape).anchor.y+80};
+            scene__add_shape(scene,create_projectile(upper,speed,renderer,&projectile_source_rect));
+            scene__add_shape(scene,create_projectile(lower,speed,renderer,&projectile_source_rect));
             (&(shape->memory.ship_props))->previous_firing_time = scene->time_start;
         }
     );
@@ -195,7 +198,7 @@ void handleEvents(scene_t* scene) {
                 scene->mouse_position.y = event.motion.y;
         }
         if (event.type == SDL_QUIT || scene->keys_state[SDL_SCANCODE_ESCAPE]==1 ) {
-                PRINTF("\nquitting\n");
+                PRINT("\nquitting\n");
             loop_running=0;
             break;
         } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_RESIZED) {
@@ -277,9 +280,9 @@ int main(int argc, const char** argv) {
             scene->time_physics = SDL_GetTicks64();
             scene__draw(scene,renderer);
             scene->time_draw = SDL_GetTicks64();
-            scene__execute_collisions(scene,renderer);
+            // scene__execute_collisions(scene,renderer);
             scene->time_collisions = SDL_GetTicks64();
-            scene__clear_dead_shapes(scene);
+            //scene__clear_dead_shapes(scene);
             scene->time_cleanup = SDL_GetTicks64();
 
             SDL_Color color={200,100,0,255};
@@ -288,19 +291,21 @@ int main(int argc, const char** argv) {
                 (scene->time_cleanup-scene->time_start),
                 maxw,maxh
             )
+            scene->time_end=SDL_GetTicks64();
+            long int total_time = scene->time_end - scene->time_start;
 
-            SDL_DRAW_TEXT(2,10,maxh-30,font,color,"physics: %03lums, draw: %03lu ms",
+            SDL_DRAW_TEXT(2,10,maxh-30,font,color,"physics: %03lums, draw: %03lu ms total time: %ld",
                 (scene->time_physics-scene->time_start),
-                (scene->time_draw-scene->time_physics)
+                (scene->time_draw-scene->time_physics),
+                total_time
             )
 
             // Update the screen
             SDL_RenderPresent(renderer);
-            scene->time_end=SDL_GetTicks64();
         }
-        unsigned long int total_time = scene->time_end - scene->time_start;
-        if(total_time < 20000000) {
-            usleep(40000-total_time/1000);
+        long int total_time = scene->time_end - scene->time_start;
+        if(total_time < 100) {
+            usleep(100-total_time);
         }
         
     }

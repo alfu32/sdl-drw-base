@@ -4,10 +4,20 @@
     #include <stdlib.h>
     #include <SDL2/SDL.h>
     #include <SDL2/SDL_image.h>
+    #include <time.h>
 
 
-    #define DEBUG_PRINT 0
-    #define PRINTF if(DEBUG_PRINT)printf
+
+    #ifndef DBG
+        #define DEBUG_PRINT 0
+    #else
+        #define DEBUG_PRINT 1
+    #endif
+    
+    #define PRINTF(fmt,...) if(DEBUG_PRINT)printf("[%ld]%s(%s):%d :" fmt "\n",time(NULL),__func__,__FILE__,__LINE__,  __VA_ARGS__);
+
+    #define PRINT(message) if(DEBUG_PRINT)printf("[%ld]%s(%s):%d : %s\n",time(NULL),__func__,__FILE__,__LINE__,message);
+
     // Define error_id if it's not already defined
     #ifndef error_id
         typedef int error_id;
@@ -132,14 +142,14 @@
 
     error_id shape__init(shape_t* shp, physics_fn physics, drawing_fn draw) {
         if (!shp || !physics || !draw ){
-            PRINTF("// Invalid arguments %d\n",0);
+            PRINT("// Invalid arguments %d");
             return -1; // Invalid arguments
         }
         (*shp).anchor.x =  0;
         (*shp).anchor.y =  0;
-        PRINTF("// Initialize anchor to NULL\n");
+        PRINT("// Initialize anchor to NULL");
         shp->is_dead = 0; // Initialize is_dead to 0
-        PRINTF("// Initialize is_dead to 0\n");
+        PRINT("// Initialize is_dead to 0");
         shp->physics = physics;
         shp->draw = draw;
 
@@ -160,10 +170,10 @@
         ///     shp->contour[i] = contour[i];
 
         // Mark end of contour with (-1, -1)
-        PRINTF("// Mark end of contour with (-1, -1)\n");
+        PRINT("// Mark end of contour with (-1, -1)\n");
         /// shp->contour[contour_size].x = -1;
         /// shp->contour[contour_size].y = -1;
-        PRINTF("// Setup end of contour (-1, -1)\n");
+        PRINT("// Setup end of contour (-1, -1)\n");
 
         return 0; // Success
     }
@@ -190,14 +200,14 @@
 
     error_id shape__init_sprite_with_texture(shape_t* shp, SDL_Renderer* rend,physics_fn physics, SDL_Texture * tex, SDL_Rect *sprite_source) {
         if (!shp || !physics ){
-            PRINTF("// Invalid arguments\n");
+            PRINT("// Invalid arguments\n");
             return -1; // Invalid arguments
         }
         (*shp).anchor.x =  0;
         (*shp).anchor.y =  0;
-        PRINTF("// Initialize anchor to NULL\n");
+        PRINT("// Initialize anchor to NULL\n");
         shp->is_dead = 0; // Initialize is_dead to 0
-        PRINTF("// Initialize is_dead to 0\n");
+        PRINT("// Initialize is_dead to 0\n");
         // load the image into memory using SDL_image library function
         // SDL_Surface* surface = IMG_Load("resources/hello.png");
         shp->draw=&shape__static__draw_sprite;
@@ -214,14 +224,14 @@
 
     error_id shape__init_sprite(shape_t* shp, SDL_Renderer* rend,physics_fn physics, const char * filename, SDL_Rect *sprite_source) {
         if (!shp || !physics ){
-            PRINTF("// Invalid arguments\n");
+            PRINT("// Invalid arguments\n");
             return -1; // Invalid arguments
         }
         (*shp).anchor.x =  0;
         (*shp).anchor.y =  0;
-        PRINTF("// Initialize anchor to NULL\n");
+        PRINT("// Initialize anchor to NULL\n");
         shp->is_dead = 0; // Initialize is_dead to 0
-        PRINTF("// Initialize is_dead to 0\n");
+        PRINT("// Initialize is_dead to 0\n");
         // load the image into memory using SDL_image library function
         // SDL_Surface* surface = IMG_Load("resources/hello.png");
         shp->draw=&shape__static__draw_sprite;
@@ -261,7 +271,7 @@
         PRINTF("executing draw fn pointer %lu\n",(unsigned long)(shp->draw));
         // return;
         (*shp).draw(scene,shp, renderer);
-        PRINTF("// finished drawing");
+        PRINT("// finished drawing");
     }
 
     void shape__physics(shape_t* shp, scene_t* scene, SDL_Renderer* renderer) {
@@ -288,7 +298,7 @@
         // draw the image to the window
         SDL_Rect source={shape->sprite_source.x,shape->sprite_source.y,shape->sprite_source.w,shape->sprite_source.h};
         SDL_Rect dest={shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h};
-        PRINTF("\rdrawing sprite %lu at %d %d %d %d",(unsigned long)shape->tex,shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h);
+        PRINTF("drawing sprite %lu at %d %d %d %d",(unsigned long)shape->tex,shape->anchor.x,shape->anchor.y,shape->sprite_source.w,shape->sprite_source.h);
         SDL_RenderCopy(renderer, (*shape).tex, &source, &dest);
     }
 
@@ -405,7 +415,7 @@ void scene__draw(scene_t* scene, SDL_Renderer* renderer) {
     if (!scene || !renderer)
         return; // Invalid scene or renderer
     
-    PRINTF("counting shapes\n");
+    PRINT("counting shapes\n");
     unsigned long count = scene__shape_count(scene);
     PRINTF("found %lu shapes\n",count);
     for (unsigned long i = 0; i < count; i++){
@@ -427,12 +437,14 @@ void scene__physics(scene_t* scene, SDL_Renderer* renderer) {
         if (!scene)
             return; // Invalid scene
         
-        unsigned long count = scene->shape_count;
+        unsigned long count = scene__shape_count(scene);
         for (unsigned long i = 0; i < count; i++) {
             for (unsigned long j = i + 1; j < count; j++) {
                 if (shape__collides_with(scene->shapes[i], scene->shapes[j])) {
                     // Handle collision
                     // ...
+                    PRINTF("handling collision between %d and %d",scene->shapes[i]->type,scene->shapes[j]->type)
+
                     if(scene->shapes[i]->collision!=NULL)scene->shapes[i]->collision(scene,scene->shapes[i],scene->shapes[j],renderer);
                     if(scene->shapes[j]->collision!=NULL)scene->shapes[j]->collision(scene,scene->shapes[j],scene->shapes[i],renderer);
                 }
@@ -447,6 +459,7 @@ void scene__physics(scene_t* scene, SDL_Renderer* renderer) {
         unsigned long count = scene->shape_count;
         for (unsigned long i = 0; i < count; i++) {
             if (scene->shapes[i]->is_dead) {
+                PRINTF("shape %d %lu is dead",scene->shapes[i]->type,(unsigned long int)(scene->shapes[i]))
                 shape__free(scene->shapes[i]);
                 scene->shapes[i] = NULL;
             }
@@ -460,13 +473,13 @@ void scene__physics(scene_t* scene, SDL_Renderer* renderer) {
         //free(scene->mouse_position);
         
         // Free each shape
-        PRINTF("// Free each shape\n");
+        PRINT("// Free each shape\n");
         unsigned long count = scene->shape_count;
         for (unsigned long i = 0; i < count; i++)
             shape__free(scene->shapes[i]);
         
         // Free scene itself
-        PRINTF("// Free scene itself\n");
+        PRINT("// Free scene itself\n");
         free(scene);
 
         return ENT_ERR_OK; // Success
