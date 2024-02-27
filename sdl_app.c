@@ -22,8 +22,8 @@ int loop_running=1;
 SDL_Texture *ship_svg_texture;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
-int canvas_width = 640;
-int canvas_height = 480;
+int canvas_width = 800;
+int canvas_height = 640;
 
 
 void handleResize(int new_width, int new_height);
@@ -63,13 +63,26 @@ int shape__restore_viewport(SDL_Rect* vp,SDL_Renderer* renderer){
 }
 
 void player_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
-    ON_KEY(scene,SDL_SCANCODE_D,(*shape).anchor.x+=1;)
-    ON_KEY(scene,SDL_SCANCODE_A,(*shape).anchor.x-=1;)
-    ON_KEY(scene,SDL_SCANCODE_W,(*shape).anchor.y-=1;)
-    ON_KEY(scene,SDL_SCANCODE_S,(*shape).anchor.y+=1;)
+        (*shape).memory.projectile_props.previous_pos.x=(*shape).anchor.x;
+        (*shape).memory.projectile_props.previous_pos.y=(*shape).anchor.y;
+    ON_KEY(scene,SDL_SCANCODE_D,
+        (*shape).anchor.x+=1;
+    )
+    ON_KEY(scene,SDL_SCANCODE_A,
+        (*shape).anchor.x-=1;
+    )
+    ON_KEY(scene,SDL_SCANCODE_W,
+        (*shape).anchor.y-=1;
+    )
+    ON_KEY(scene,SDL_SCANCODE_S,
+        (*shape).anchor.y+=1;
+    )
+    (*shape).memory.projectile_props.speed.x=(*shape).anchor.x-(*shape).memory.projectile_props.previous_pos.x;
+    (*shape).memory.projectile_props.speed.y=(*shape).anchor.y-(*shape).memory.projectile_props.previous_pos.y;
+
     ON_KEY(scene,SDL_SCANCODE_SPACE,
         if(scene->time_start - shape->memory.ship_props.previous_firing_time > shape->memory.ship_props.firing_frequency ){
-            SDL_Point speed={1,1};
+            SDL_Point speed={(*shape).memory.projectile_props.speed.x*2,(*shape).memory.projectile_props.speed.y*2};
             SDL_Rect projectile_source_rect={90,0,20,20};
             scene__add_shape(scene,create_projectile((*shape).anchor,speed,renderer,&projectile_source_rect));
             (&(shape->memory.ship_props))->previous_firing_time = scene->time_start;
@@ -111,6 +124,45 @@ void projectile_physics(scene_t* scene,shape_t* shape,SDL_Renderer* renderer){
     }
     PRINTF("projectile %lu %d %d",(unsigned long)shape,shape->anchor.x,shape->anchor.y);
 }
+void collision__handler(scene_t* scene,shape_t* self,shape_t* other,SDL_Renderer* renderer){
+    int flag = (int)(self->type)*10 + (int)(other->type);
+
+    switch(flag){
+        case 11:
+        case 21:
+        case 31:
+        case 12:
+        case 13:break;
+        case 22:// ship to ship
+            self->memory.ship_props.life-=1;
+            if(self->memory.ship_props.life <= 0) {
+                self->is_dead=1;
+            }
+            other->memory.ship_props.life-=1;
+            if(other->memory.ship_props.life <= 0) {
+                other->is_dead=1;
+            }
+        break;
+        case 23:// projectile to ship
+            other->memory.ship_props.life-=1;
+            if(other->memory.ship_props.life <= 0) {
+                other->is_dead=1;
+            }
+            self->is_dead=1;
+        break;
+        case 32:// ship to projectile
+            self->memory.ship_props.life-=1;
+            if(self->memory.ship_props.life <= 0) {
+                self->is_dead=1;
+            }
+            other->is_dead=1;
+        break;
+        case 33:// projectile to projectile
+            self->is_dead=1;
+            other->is_dead=1;
+        break;
+    }
+}
 shape_t* create_projectile(SDL_Point anchor,SDL_Point speed,SDL_Renderer *renderer,SDL_Rect *tex_size) {
     shape_t* projectile = shape__alloc();
 
@@ -120,6 +172,8 @@ shape_t* create_projectile(SDL_Point anchor,SDL_Point speed,SDL_Renderer *render
     projectile->memory.projectile_props.speed.y=speed.y;
     projectile->anchor.x=anchor.x;
     projectile->anchor.y=anchor.y;
+    projectile->type=PROJECTILE;
+    projectile->collision=&collision__handler;
     return projectile;
 }
 // Function that handles events
@@ -151,6 +205,9 @@ void handleEvents(scene_t* scene) {
 }
 
 int main(int argc, const char** argv) {
+    Uint64 frequency = SDL_GetPerformanceFrequency();
+    printf("Ticks per second: %lu, per usecond:%lu\n", frequency,frequency/1000/1000);
+
     int pt_size=24;
     const char* font_name="fonts/Arcade.ttf";
     if(argc>=2){
@@ -170,12 +227,14 @@ int main(int argc, const char** argv) {
     ship_svg_texture = shape__static__init_texture(renderer,"sprites.svg");
 
     shape_t* player = shape__alloc();
+    player->type=SHIP;
+    player->collision=&collision__handler;
     printf("allocated player\n");
     
     SDL_Rect player_source_rect={0,0,70,60};
     printf("initialized texture source rectangle\n");
     error_id err_init_player = shape__init_sprite_with_texture(player,renderer,&player_physics,ship_svg_texture,&player_source_rect);
-    if(err_init_player){
+    if (err_init_player) {
         printf("texture initialisation error %d sprite\n",err_init_player);
         loop_running=0;
     }
@@ -186,6 +245,7 @@ int main(int argc, const char** argv) {
     printf("added player to scene\n");
 
     shape_t* cursor = shape__alloc();
+    cursor->type=BACKGROUND;
     SDL_Rect cursor_source_rect={70,40,20,20};
     
     error_id err_init_cursor = shape__init_sprite_with_texture(cursor,renderer,&cursor_physics,ship_svg_texture,&cursor_source_rect);
@@ -194,21 +254,13 @@ int main(int argc, const char** argv) {
         loop_running=0;
     }
     scene__add_shape(scene,cursor);
-    
-
-    SDL_Point origin= {20,30};
-    SDL_Point speed={1,1};
-
-    SDL_Rect projectile_source_rect={90,0,20,20};
-    shape_t* projectile = create_projectile(origin,speed,renderer,&projectile_source_rect);
-    scene__add_shape(scene,projectile);
 
     scene->time_start = SDL_GetTicks64();
     TTF_Font *font = TTF_OpenFont(font_name, pt_size);
 
     while (loop_running) {
         handleEvents(scene);
-        if(loop_running){
+        if (loop_running) {
 
             int maxw,maxh;
             SDL_GetRendererOutputSize(renderer,&maxw,&maxh);
@@ -225,7 +277,9 @@ int main(int argc, const char** argv) {
             scene->time_physics = SDL_GetTicks64();
             scene__draw(scene,renderer);
             scene->time_draw = SDL_GetTicks64();
+            scene__execute_collisions(scene,renderer);
             scene->time_collisions = SDL_GetTicks64();
+            scene__clear_dead_shapes(scene);
             scene->time_cleanup = SDL_GetTicks64();
 
             SDL_Color color={200,100,0,255};
@@ -242,16 +296,13 @@ int main(int argc, const char** argv) {
 
             // Update the screen
             SDL_RenderPresent(renderer);
-
-            // Free text_texture after rendering
-            SDL_DestroyTexture(text_texture_1);
-            SDL_DestroyTexture(text_texture_2);
-
-            // Free text_surface after creating texture
-            SDL_FreeSurface(text_surface_1);
-            SDL_FreeSurface(text_surface_2);
+            scene->time_end=SDL_GetTicks64();
         }
-        // usleep(1*1000);
+        unsigned long int total_time = scene->time_end - scene->time_start;
+        if(total_time < 20000000) {
+            usleep(40000-total_time/1000);
+        }
+        
     }
 
     // Clean up

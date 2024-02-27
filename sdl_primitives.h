@@ -144,8 +144,10 @@ char buffer_##N[1000];\
 snprintf(buffer_##N,1000,TEXT,__VA_ARGS__);\
 SDL_Surface *text_surface_##N = TTF_RenderText_Blended(FONT, buffer_##N, COLOR);\
 SDL_Texture *text_texture_##N = SDL_CreateTextureFromSurface(renderer, text_surface_##N);\
+SDL_FreeSurface(text_surface_##N);\
 SDL_Rect text_rect_##N = {X, Y, text_surface_##N->w, text_surface_##N->h};\
 SDL_RenderCopy(renderer, text_texture_##N, NULL, &text_rect_##N);\
+SDL_DestroyTexture(text_texture_##N);\
 
 
 #endif

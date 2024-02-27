@@ -31,17 +31,19 @@
 
 
     typedef struct projectile_data_s {
-        /*owned    */  SDL_Point speed;
-        /*owned    */  int mass;
-        /*borrowed */  SDL_Point previous_pos;
+        /*owned    */  SDL_Point speed;        // 8 bytes
+        /*owned    */  int mass;               // 4 bytes
+        /*borrowed */  SDL_Point previous_pos; // 8 bytes
     } projectile_data_t;
 
     typedef struct ship_data_s {
-        /*owned    */  SDL_Point speed;
-        /*owned    */  int mass;
-        /*borrowed */  SDL_Point previous_pos;
-        /*borrowed */  long int previous_firing_time;
-        /*borrowed */  long int firing_frequency;
+        /*owned    */  SDL_Point speed;                  // 8 bytes
+        /*owned    */  int mass;                         // 4 bytes
+        /*owned    */  int life;                         // 4 bytes
+        /*borrowed */  SDL_Point previous_pos;           // 8 bytes
+        /*borrowed */  long int previous_firing_time;    // 8 bytes
+        /*borrowed */  long int firing_frequency;        // 8 bytes
+        /*owned    */  SDL_Point nominal_impulse_thrust; // 8 bytes
     } ship_data_t;
 
     typedef union shape_data_u{
@@ -55,15 +57,23 @@
     // Function pointer types
     typedef void (*physics_fn)(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
     typedef void (*drawing_fn)(scene_t* scene, shape_t* shape, SDL_Renderer* renderer);
+    typedef void (*collision_fn)(scene_t* scene, shape_t* self, shape_t* other, SDL_Renderer* renderer);
 
+    typedef enum shape_type_e{
+        BACKGROUND=1,
+        SHIP=2,
+        PROJECTILE=3
+    } shape_type_enum;
     // Structure definitions
     typedef struct shape_s {
+        /*owned  */ shape_type_enum type;
         /*owned  */ SDL_Point anchor;
         /*owned  */ int is_dead;
         /*borowed*/ SDL_Texture* tex;
         /*owned  */ SDL_Rect sprite_source;
         /*borowed*/ physics_fn physics;
         /*borowed*/ drawing_fn draw;
+        /*borowed*/ collision_fn collision;
     //  /*owned  */ SDL_Point* contour;
         /*owned  */ shape_data_t memory;
     } shape_t;
@@ -78,6 +88,7 @@
         /*owned  */ long int time_draw;
         /*owned  */ long int time_collisions;
         /*owned  */ long int time_cleanup;
+        /*owned  */ long int time_end;
     } scene_t;
 
 
@@ -104,7 +115,7 @@
     error_id scene__remove_shape(scene_t* scene, shape_t* shp);
     void scene__draw(scene_t* scene, SDL_Renderer* renderer);
     void scene__physics(scene_t* scene, SDL_Renderer* renderer);
-    void scene__execute_collisions(scene_t* scene);
+    void scene__execute_collisions(scene_t* scene,SDL_Renderer *renderer);
     void scene__clear_dead_shapes(scene_t* scene);
     error_id scene__free(scene_t* scene);
 
@@ -287,20 +298,22 @@
         if (!shp || shp->is_dead)
             return rect; // Invalid shape or shape is dead
         
-        // Logic to calculate bounding box
-        // ...
-
-        return rect;
+        return (shp->sprite_source);
     }
 
     int shape__collides_with(shape_t* a, shape_t* b) {
         if (!a || !b || a->is_dead || b->is_dead)
             return 0; // Invalid shapes or any of them is dead
         
-        // Logic to check collision
-        // ...
+        SDL_Rect ra = shape__get_bounding_box(a);
+        SDL_Rect rb = shape__get_bounding_box(b);
+        SDL_Rect rc;
 
-        return ENT_ERR_OK; // Return 1 if collides, 0 otherwise
+        SDL_IntersectRect(&ra,&rb,&rc);
+
+        return SDL_RectEmpty(&rc);
+
+        /// return ENT_ERR_OK; // Return 1 if collides, 0 otherwise
     }
 
 
@@ -410,7 +423,7 @@ void scene__physics(scene_t* scene, SDL_Renderer* renderer) {
         shape__physics(scene->shapes[i], scene,renderer);
 }
 
-    void scene__execute_collisions(scene_t* scene) {
+    void scene__execute_collisions(scene_t* scene,SDL_Renderer *renderer) {
         if (!scene)
             return; // Invalid scene
         
@@ -420,6 +433,8 @@ void scene__physics(scene_t* scene, SDL_Renderer* renderer) {
                 if (shape__collides_with(scene->shapes[i], scene->shapes[j])) {
                     // Handle collision
                     // ...
+                    if(scene->shapes[i]->collision!=NULL)scene->shapes[i]->collision(scene,scene->shapes[i],scene->shapes[j],renderer);
+                    if(scene->shapes[j]->collision!=NULL)scene->shapes[j]->collision(scene,scene->shapes[j],scene->shapes[i],renderer);
                 }
             }
         }
